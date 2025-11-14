@@ -1,4 +1,5 @@
 #include "common/type/date_type.h"
+#include "common/value.h"
 #include "common/time/datetime.h"
 #include "common/log/log.h"
 #include <cstdio>

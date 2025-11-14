@@ -39,6 +39,8 @@ while (0);
 #include "sql/parser/parse_defs.h"
 #include "common/log/log.h"
 #include "yacc_sql.hpp"
+#include "common/type/date_type.h"
+#include "common/value.h"
 
 #ifndef register
 #define register 
@@ -68,7 +70,7 @@ DOT              \.
 QUOTE            [\'\"]
 %x STR
 
-DATE    [Dd][Aa][Tt][Ee] // 添加 DATE 的正则匹配
+DATE    [Dd][Aa][Tt][Ee]
 
 /* 规则匹配的优先级：*/
 /* 1. 匹配的规则长的优先 */
@@ -129,28 +131,29 @@ FIELDS                                  RETURN_TOKEN(FIELDS);
 TERMINATED                              RETURN_TOKEN(TERMINATED);
 ENCLOSED                                RETURN_TOKEN(ENCLOSED);
 {ID}                                    yylval->cstring=strdup(yytext); static_cast<std::vector<char*>*>(yyextra)->push_back(yylval->cstring); RETURN_TOKEN(ID);
-"("                                     RETURN_TOKEN(LBRACE);
-")"                                     RETURN_TOKEN(RBRACE);
+"("                                     { RETURN_TOKEN(LBRACE); }
+")"                                     { RETURN_TOKEN(RBRACE); }
 
-","                                     RETURN_TOKEN(COMMA);
-"="                                     RETURN_TOKEN(EQ);
-"<="                                    RETURN_TOKEN(LE);
-"<>"                                    RETURN_TOKEN(NE);
-"!="                                    RETURN_TOKEN(NE);
-"<"                                     RETURN_TOKEN(LT);
-">="                                    RETURN_TOKEN(GE);
-">"                                     RETURN_TOKEN(GT);
+","                                     { RETURN_TOKEN(COMMA); }
+"="                                     { RETURN_TOKEN(EQ); }
+"<="                                    { RETURN_TOKEN(LE); }
+"<>"                                    { RETURN_TOKEN(NE); }
+"!="                                    { RETURN_TOKEN(NE); }
+"<"                                     { RETURN_TOKEN(LT); }
+">="                                    { RETURN_TOKEN(GE); }
+">"                                     { RETURN_TOKEN(GT); }
 
 "+" |
 "-" |
 "*" |
 "/"                                     { return yytext[0]; }
-\"[^"]*\"                               yylval->cstring = strdup(yytext); static_cast<std::vector<char*>*>(yyextra)->push_back(yylval->cstring); RETURN_TOKEN(SSS);
-'[^']*\'                                yylval->cstring = strdup(yytext); static_cast<std::vector<char*>*>(yyextra)->push_back(yylval->cstring); RETURN_TOKEN(SSS);
 
-{DATE}                                   RETURN_TOKEN(DATE_T);
+\"[^\"]*\"    { yylval->cstring = strdup(yytext); static_cast<std::vector<char*>*>(yyextra)->push_back(yylval->cstring); RETURN_TOKEN(SSS); }
+'[^']*'       { yylval->cstring = strdup(yytext); static_cast<std::vector<char*>*>(yyextra)->push_back(yylval->cstring); RETURN_TOKEN(SSS); }
 
-.                                       LOG_DEBUG("Unknown character [%c]",yytext[0]); return yytext[0];
+{DATE}                                   { RETURN_TOKEN(DATE_T); }
+
+.                                       { LOG_DEBUG("Unknown character [%c]",yytext[0]); return yytext[0]; }
 %%
 
 void scan_string(const char *str, yyscan_t scanner) {

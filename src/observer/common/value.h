@@ -119,6 +119,8 @@ public:
   void set_string(const char *s, int len = 0);
   void set_empty_string(int len);
   void set_string_from_other(const Value &other);
+  void set_date(int days_since_epoch) { set_int(days_since_epoch); } // 添加日期设置方法
+  int get_date() const { return get_int(); } // 添加日期获取方法
 
 private:
   AttrType attr_type_ = AttrType::UNDEFINED;

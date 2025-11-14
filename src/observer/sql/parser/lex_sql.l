@@ -68,6 +68,8 @@ DOT              \.
 QUOTE            [\'\"]
 %x STR
 
+DATE    [Dd][Aa][Tt][Ee] // 添加 DATE 的正则匹配
+
 /* 规则匹配的优先级：*/
 /* 1. 匹配的规则长的优先 */
 /* 2. 写在最前面的优先 */
@@ -145,6 +147,8 @@ ENCLOSED                                RETURN_TOKEN(ENCLOSED);
 "/"                                     { return yytext[0]; }
 \"[^"]*\"                               yylval->cstring = strdup(yytext); static_cast<std::vector<char*>*>(yyextra)->push_back(yylval->cstring); RETURN_TOKEN(SSS);
 '[^']*\'                                yylval->cstring = strdup(yytext); static_cast<std::vector<char*>*>(yyextra)->push_back(yylval->cstring); RETURN_TOKEN(SSS);
+
+{DATE}                                   RETURN_TOKEN(DATE_T);
 
 .                                       LOG_DEBUG("Unknown character [%c]",yytext[0]); return yytext[0];
 %%

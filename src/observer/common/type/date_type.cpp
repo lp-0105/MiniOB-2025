@@ -25,8 +25,9 @@ RC DateType::set_value_from_str(Value &val, const std::string &data) const {
   }
 
   int julian_day = common::DateTime::julian_date(y, m, d);
-  // lower bound: 1970-01-01 (JULIAN_19700101)
-  if (julian_day < common::DateTime::JULIAN_19700101) {
+  // lower bound: 1900-01-01 (extended to support dates before 1970)
+  const int JULIAN_19000101 = common::DateTime::julian_date(1900, 1, 1);
+  if (julian_day < JULIAN_19000101) {
     return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
   // upper bound: 2100-01-01 (extended to support dates beyond 2038)

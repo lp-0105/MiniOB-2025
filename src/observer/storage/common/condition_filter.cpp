@@ -173,33 +173,6 @@ bool DefaultConditionFilter::filter(const Record &rec) const
     right_value.set_value(right_.value);
   }
 
-  // 特殊处理：如果类型不匹配但允许转换，尝试转换
-  if (left_value.attr_type() != right_value.attr_type()) {
-    // 处理DATES与CHARS类型转换
-    if ((left_value.attr_type() == AttrType::DATES && right_value.attr_type() == AttrType::CHARS) ||
-        (left_value.attr_type() == AttrType::CHARS && right_value.attr_type() == AttrType::DATES)) {
-      
-      Value *char_value = (left_value.attr_type() == AttrType::CHARS) ? &left_value : &right_value;
-      
-      // 尝试转换CHARS为DATES
-      Value converted_value;
-      CharType char_type_instance;
-      RC rc = char_type_instance.cast_to(*char_value, AttrType::DATES, converted_value);
-      if (rc == RC::SUCCESS) {
-        // 使用转换后的值进行比较
-        if (char_value == &left_value) {
-          left_value = converted_value;
-        } else {
-          right_value = converted_value;
-        }
-      } else {
-        // 转换失败，返回false（不匹配）
-        LOG_WARN("Date conversion failed for comparison");
-        return false;
-      }
-    }
-  }
-
   int cmp_result = left_value.compare(right_value);
 
   switch (comp_op_) {

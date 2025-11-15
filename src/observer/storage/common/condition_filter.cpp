@@ -187,8 +187,6 @@ bool DefaultConditionFilter::filter(const Record &rec) const
         (left_value.attr_type() == AttrType::CHARS && right_value.attr_type() == AttrType::DATES)) {
       
       Value *char_value = (left_value.attr_type() == AttrType::CHARS) ? &left_value : &right_value;
-      // 删除未使用的date_value变量
-      // Value *date_value = (left_value.attr_type() == AttrType::DATES) ? &left_value : &right_value;
       
       // 尝试转换CHARS为DATES
       Value converted_value;
@@ -201,6 +199,10 @@ bool DefaultConditionFilter::filter(const Record &rec) const
         } else {
           right_value = converted_value;
         }
+      } else {
+        // 转换失败，尝试直接比较字符串（作为备选方案）
+        // 这里可以添加日志记录转换失败
+        LOG_DEBUG("Date conversion failed, proceeding with original comparison");
       }
     }
   }

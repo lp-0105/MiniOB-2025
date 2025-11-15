@@ -106,14 +106,6 @@ RC DefaultConditionFilter::init(Table &table, const ConditionSqlNode &condition)
     right.attr_offset = 0;
   }
 
-  // 校验和转换
-  //  if (!field_type_compare_compatible_table[type_left][type_right]) {
-  //    // 不能比较的两个字段， 要把信息传给客户端
-  //    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-  //  }
-  // NOTE：这里没有实现不同类型的数据比较，比如整数跟浮点数之间的对比
-  // 但是选手们还是要实现。这个功能在预选赛中会出现
-  
   // 修改：允许DATES类型与CHARS类型之间的比较
   if (type_left != type_right) {
     // 特殊处理：如果一边是DATES类型，另一边是CHARS类型，尝试转换CHARS为DATES
@@ -121,14 +113,15 @@ RC DefaultConditionFilter::init(Table &table, const ConditionSqlNode &condition)
         (type_left == AttrType::CHARS && type_right == AttrType::DATES)) {
       
       // 确定哪个是DATES类型，哪个是CHARS类型
-      // 删除未使用的变量定义
+      // 删除第124-125行的未使用变量定义
       // AttrType date_type = (type_left == AttrType::DATES) ? type_left : type_right;
       // AttrType char_type = (type_left == AttrType::CHARS) ? type_left : type_right;
       
-      // 确定哪个描述符需要转换
-      ConDesc *char_desc = (type_left == AttrType::CHARS) ? &left : &right;
-      // 删除未使用的date_desc变量
+      // 删除第130行的未使用变量定义  
       // ConDesc *date_desc = (type_left == AttrType::DATES) ? &left : &right;
+      
+      // 添加char_desc变量的定义
+      ConDesc *char_desc = (type_left == AttrType::CHARS) ? &left : &right;
       
       // 如果CHARS描述符是属性（列），不能转换
       if (char_desc->is_attr) {

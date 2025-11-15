@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <regex>
 
 #include "common/log/log.h"
 #include "common/lang/string.h"
@@ -10,8 +11,18 @@
 #include "sql/parser/yacc_sql.hpp"
 #include "sql/parser/lex_sql.h"
 #include "sql/expr/expression.h"
+#include "common/type/date_type.h"
 
 using namespace std;
+
+// 辅助函数：检查字符串是否为日期格式
+bool is_date_string(const char *str) {
+    if (!str) return false;
+    
+    // 日期格式正则表达式：YYYY-MM-DD 或 YYYY-M-D 或 YYYY-M-DD 或 YYYY-MM-D
+    std::regex date_pattern(R"(^\d{4}-\d{1,2}-\d{1,2}$)");
+    return std::regex_match(str, date_pattern);
+}
 
 string token_name(const char *sql_string, YYLTYPE *llocp)
 {
@@ -443,7 +454,20 @@ value:
     }
     |SSS {
       char *tmp = common::substr($1,1,strlen($1)-2);
-      $$ = new Value(tmp);
+      // 检查是否为日期格式字符串
+      if (is_date_string(tmp)) {
+        Value *date_value = new Value();
+        DateType date_type;
+        RC rc = date_type.set_value_from_str(*date_value, tmp);
+        if (rc == RC::SUCCESS) {
+          $$ = date_value;
+        } else {
+          // 如果不是有效的日期，则作为普通字符串处理
+          $$ = new Value(tmp);
+        }
+      } else {
+        $$ = new Value(tmp);
+      }
       free(tmp);
     }
     ;

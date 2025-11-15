@@ -159,13 +159,15 @@ bool DefaultConditionFilter::filter(const Record &rec) const
   Value left_value;
   Value right_value;
 
-  if (left_.is_attr) {  // value
+  // 获取左值
+  if (left_.is_attr) {
     left_value.set_type(attr_type_);
     left_value.set_data(rec.data() + left_.attr_offset, left_.attr_length);
   } else {
     left_value.set_value(left_.value);
   }
 
+  // 获取右值
   if (right_.is_attr) {
     right_value.set_type(attr_type_);
     right_value.set_data(rec.data() + right_.attr_offset, right_.attr_length);
@@ -173,8 +175,45 @@ bool DefaultConditionFilter::filter(const Record &rec) const
     right_value.set_value(right_.value);
   }
 
+  // 简化类型转换逻辑：只处理DATES与CHARS的转换
+  if (left_value.attr_type() != right_value.attr_type()) {
+    // 如果一边是DATES，另一边是CHARS，尝试转换CHARS为DATES
+    if (left_value.attr_type() == AttrType::DATES && right_value.attr_type() == AttrType::CHARS) {
+      // 转换右值（CHARS）为DATES
+      Value converted_value;
+      CharType char_type_instance;
+      RC rc = char_type_instance.cast_to(right_value, AttrType::DATES, converted_value);
+      if (rc == RC::SUCCESS) {
+        right_value = converted_value;
+        right_value.set_type(AttrType::DATES);
+      } else {
+        LOG_WARN("Failed to convert CHAR to DATE for comparison, value: %s", right_value.to_string().c_str());
+        return false;
+      }
+    } else if (left_value.attr_type() == AttrType::CHARS && right_value.attr_type() == AttrType::DATES) {
+      // 转换左值（CHARS）为DATES
+      Value converted_value;
+      CharType char_type_instance;
+      RC rc = char_type_instance.cast_to(left_value, AttrType::DATES, converted_value);
+      if (rc == RC::SUCCESS) {
+        left_value = converted_value;
+        left_value.set_type(AttrType::DATES);
+      } else {
+        LOG_WARN("Failed to convert CHAR to DATE for comparison, value: %s", left_value.to_string().c_str());
+        return false;
+      }
+    } else {
+      // 其他类型不匹配，直接返回false
+      LOG_WARN("Type mismatch in comparison: %d vs %d", 
+               left_value.attr_type(), right_value.attr_type());
+      return false;
+    }
+  }
+
+  // 确保类型一致后进行实际比较
   int cmp_result = left_value.compare(right_value);
 
+  // 根据比较操作符返回结果
   switch (comp_op_) {
     case EQUAL_TO: return 0 == cmp_result;
     case LESS_EQUAL: return cmp_result <= 0;
@@ -182,12 +221,10 @@ bool DefaultConditionFilter::filter(const Record &rec) const
     case LESS_THAN: return cmp_result < 0;
     case GREAT_EQUAL: return cmp_result >= 0;
     case GREAT_THAN: return cmp_result > 0;
-
-    default: break;
+    default: 
+      LOG_PANIC("Unsupported comparison operator: %d", comp_op_);
+      return false;
   }
-
-  LOG_PANIC("Never should print this.");
-  return cmp_result;  // should not go here
 }
 
 CompositeConditionFilter::~CompositeConditionFilter()

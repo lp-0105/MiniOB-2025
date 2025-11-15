@@ -36,6 +36,8 @@ RC DateType::set_value_from_str(Value &val, const std::string &data) const {
   }
 
   val.set_int(julian_day - common::DateTime::JULIAN_19700101);
+  // ensure the Value is marked as DATES (storage is int representing days since epoch)
+  val.set_type(AttrType::DATES);
   return RC::SUCCESS;
 }
 

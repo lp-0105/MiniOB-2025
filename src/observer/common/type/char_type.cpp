@@ -29,7 +29,25 @@ RC CharType::set_value_from_str(Value &val, const string &data) const
 RC CharType::cast_to(const Value &val, AttrType type, Value &result) const
 {
   switch (type) {
-    default: return RC::UNIMPLEMENTED;
+    case AttrType::INTS: {
+      return DataType::type_instance(AttrType::INTS)->set_value_from_str(result, val.get_string());
+    }
+    case AttrType::FLOATS: {
+      return DataType::type_instance(AttrType::FLOATS)->set_value_from_str(result, val.get_string());
+    }
+    case AttrType::BOOLEANS: {
+      return DataType::type_instance(AttrType::BOOLEANS)->set_value_from_str(result, val.get_string());
+    }
+    case AttrType::DATES: {
+      // parse date string into result. Use DateType's set_value_from_str, then ensure result type is DATES
+      RC rc = DataType::type_instance(AttrType::DATES)->set_value_from_str(result, val.get_string());
+      if (rc != RC::SUCCESS) return rc;
+      result.set_type(AttrType::DATES);
+      return RC::SUCCESS;
+    }
+    default: {
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
   }
   return RC::SUCCESS;
 }

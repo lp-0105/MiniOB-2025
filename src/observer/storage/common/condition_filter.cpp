@@ -55,6 +55,9 @@ RC DefaultConditionFilter::init(const ConDesc &left, const ConDesc &right, AttrT
   return RC::SUCCESS;
 }
 
+#include "common/type/char_type.h"
+#include "common/type/date_type.h"
+
 RC DefaultConditionFilter::init(Table &table, const ConditionSqlNode &condition)
 {
   const TableMeta &table_meta = table.table_meta();
@@ -110,8 +113,49 @@ RC DefaultConditionFilter::init(Table &table, const ConditionSqlNode &condition)
   //  }
   // NOTE：这里没有实现不同类型的数据比较，比如整数跟浮点数之间的对比
   // 但是选手们还是要实现。这个功能在预选赛中会出现
+  
+  // 修改：允许DATES类型与CHARS类型之间的比较
   if (type_left != type_right) {
-    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    // 特殊处理：如果一边是DATES类型，另一边是CHARS类型，尝试转换CHARS为DATES
+    if ((type_left == AttrType::DATES && type_right == AttrType::CHARS) ||
+        (type_left == AttrType::CHARS && type_right == AttrType::DATES)) {
+      
+      // 确定哪个是DATES类型，哪个是CHARS类型
+      // 删除未使用的变量定义
+      // AttrType date_type = (type_left == AttrType::DATES) ? type_left : type_right;
+      // AttrType char_type = (type_left == AttrType::CHARS) ? type_left : type_right;
+      
+      // 确定哪个描述符需要转换
+      ConDesc *char_desc = (type_left == AttrType::CHARS) ? &left : &right;
+      // 删除未使用的date_desc变量
+      // ConDesc *date_desc = (type_left == AttrType::DATES) ? &left : &right;
+      
+      // 如果CHARS描述符是属性（列），不能转换
+      if (char_desc->is_attr) {
+        LOG_WARN("Cannot compare DATE column with CHAR column directly");
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
+      
+      // 尝试将CHARS值转换为DATES值
+      Value converted_value;
+      CharType char_type_instance;
+      RC rc = char_type_instance.cast_to(char_desc->value, AttrType::DATES, converted_value);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("Failed to convert CHAR value to DATE type");
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
+      
+      // 更新转换后的值
+      char_desc->value = converted_value;
+      char_desc->value.set_type(AttrType::DATES);
+      
+      // 设置统一的类型为DATES
+      type_left = AttrType::DATES;
+      type_right = AttrType::DATES;
+    } else {
+      // 其他类型不匹配的情况仍然返回错误
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
   }
 
   return init(left, right, type_left, condition.comp);
@@ -134,6 +178,31 @@ bool DefaultConditionFilter::filter(const Record &rec) const
     right_value.set_data(rec.data() + right_.attr_offset, right_.attr_length);
   } else {
     right_value.set_value(right_.value);
+  }
+
+  // 特殊处理：如果类型不匹配但允许转换，尝试转换
+  if (left_value.attr_type() != right_value.attr_type()) {
+    // 处理DATES与CHARS类型转换
+    if ((left_value.attr_type() == AttrType::DATES && right_value.attr_type() == AttrType::CHARS) ||
+        (left_value.attr_type() == AttrType::CHARS && right_value.attr_type() == AttrType::DATES)) {
+      
+      Value *char_value = (left_value.attr_type() == AttrType::CHARS) ? &left_value : &right_value;
+      // 删除未使用的date_value变量
+      // Value *date_value = (left_value.attr_type() == AttrType::DATES) ? &left_value : &right_value;
+      
+      // 尝试转换CHARS为DATES
+      Value converted_value;
+      CharType char_type_instance;
+      RC rc = char_type_instance.cast_to(*char_value, AttrType::DATES, converted_value);
+      if (rc == RC::SUCCESS) {
+        // 使用转换后的值进行比较
+        if (char_value == &left_value) {
+          left_value = converted_value;
+        } else {
+          right_value = converted_value;
+        }
+      }
+    }
   }
 
   int cmp_result = left_value.compare(right_value);

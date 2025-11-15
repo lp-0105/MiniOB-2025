@@ -193,9 +193,9 @@ bool DefaultConditionFilter::filter(const Record &rec) const
           right_value = converted_value;
         }
       } else {
-        // 转换失败，尝试直接比较字符串（作为备选方案）
-        // 这里可以添加日志记录转换失败
-        LOG_DEBUG("Date conversion failed, proceeding with original comparison");
+        // 转换失败，返回false（不匹配）
+        LOG_WARN("Date conversion failed for comparison");
+        return false;
       }
     }
   }

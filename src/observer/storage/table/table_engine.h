@@ -57,6 +57,10 @@ public:
   // TODO: remove this function
   virtual RC init() = 0;
 
+  // 添加删除表相关的方法
+  virtual RC drop_all_indexes() = 0;
+  virtual RC drop_data() = 0;
+
 protected:
   TableMeta *table_meta_ = nullptr;
 };

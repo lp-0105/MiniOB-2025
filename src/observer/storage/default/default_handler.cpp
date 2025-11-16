@@ -139,10 +139,32 @@ RC DefaultHandler::create_table(const char *dbname, const char *relation_name, s
   if (db == nullptr) {
     return RC::SCHEMA_DB_NOT_OPENED;
   }
-  return db->create_table(relation_name, attributes, {});
+  return db->create_table(relation_name, attributes, {}, StorageFormat::ROW_FORMAT);  // 添加缺失的storage_format参数
 }
 
-RC DefaultHandler::drop_table(const char *dbname, const char *relation_name) { return RC::UNIMPLEMENTED; }
+RC DefaultHandler::drop_table(const char *dbname, const char *relation_name)
+{
+  if (dbname == nullptr || relation_name == nullptr) {
+    LOG_WARN("Invalid arguments. dbname=%p, relation_name=%p", dbname, relation_name);
+    return RC::INVALID_ARGUMENT;
+  }
+
+  Db *db = find_db(dbname);
+  if (db == nullptr) {
+    LOG_WARN("No such database: %s", dbname);
+    return RC::SCHEMA_DB_NOT_OPENED;
+  }
+
+  // 删除表及其相关资源
+  RC rc = db->drop_table(relation_name);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("Failed to drop table %s in database %s, rc=%s", relation_name, dbname, strrc(rc));
+    return rc;
+  }
+
+  LOG_INFO("Successfully dropped table %s in database %s", relation_name, dbname);
+  return RC::SUCCESS;
+}
 
 Db *DefaultHandler::find_db(const char *dbname) const
 {

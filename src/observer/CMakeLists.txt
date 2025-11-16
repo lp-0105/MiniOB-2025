@@ -54,3 +54,35 @@ TARGET_LINK_LIBRARIES(observer_static ${LIBRARIES} oblsm)
 INSTALL(TARGETS observer observer_static 
     RUNTIME DESTINATION bin
     ARCHIVE DESTINATION lib)
+
+set(SQL_STMT_SOURCES
+    sql/stmt/stmt.cpp
+    sql/stmt/calc_stmt.cpp
+    sql/stmt/select_stmt.cpp
+    sql/stmt/insert_stmt.cpp
+    sql/stmt/delete_stmt.cpp
+    sql/stmt/update_stmt.cpp
+    sql/stmt/create_table_stmt.cpp
+    sql/stmt/drop_table_stmt.cpp  # 添加drop_table_stmt.cpp
+    sql/stmt/analyze_table_stmt.cpp
+    sql/stmt/create_index_stmt.cpp
+    sql/stmt/desc_table_stmt.cpp
+    sql/stmt/explain_stmt.cpp
+    sql/stmt/load_data_stmt.cpp
+    sql/stmt/filter_stmt.cpp
+)
+
+set(SQL_EXECUTOR_SOURCES
+    sql/executor/command_executor.cpp
+    sql/executor/create_table_executor.cpp
+    sql/executor/drop_table_executor.cpp  # 添加drop_table_executor.cpp
+    sql/executor/analyze_table_executor.cpp
+    sql/executor/create_index_executor.cpp
+    sql/executor/desc_table_executor.cpp
+    sql/executor/help_executor.cpp
+    sql/executor/show_tables_executor.cpp
+    sql/executor/trx_begin_executor.cpp
+    sql/executor/trx_end_executor.cpp
+    sql/executor/set_variable_executor.cpp
+    sql/executor/load_data_executor.cpp
+)

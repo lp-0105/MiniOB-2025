@@ -297,3 +297,23 @@ RC Table::sync()
 {
   return engine_->sync();
 }
+
+// 实现删除所有索引的方法
+RC Table::drop_all_indexes()
+{
+  if (engine_ == nullptr) {
+    LOG_WARN("Table engine is not initialized");
+    return RC::INTERNAL;
+  }
+  return engine_->drop_all_indexes();
+}
+
+// 实现删除数据的方法
+RC Table::drop_data()
+{
+  if (engine_ == nullptr) {
+    LOG_WARN("Table engine is not initialized");
+    return RC::INTERNAL;
+  }
+  return engine_->drop_data();
+}

@@ -50,6 +50,10 @@ public:
   RC     open() override;
   RC     init() override { return RC::UNIMPLEMENTED; }
 
+  // 添加删除方法
+  RC drop_all_indexes() override { return RC::UNIMPLEMENTED; }
+  RC drop_data() override { return RC::UNIMPLEMENTED; }
+
 private:
   Db              *db_;
   Table           *table_;

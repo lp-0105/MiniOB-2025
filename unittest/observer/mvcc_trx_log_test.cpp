@@ -28,6 +28,7 @@ See the Mulan PSL v2 for more details. */
 #include "storage/trx/mvcc_trx.h"
 #include "common/thread/thread_pool_executor.h"
 #include "storage/record/heap_record_scanner.h"
+#include "observer/common/types.h"
 
 using namespace std;
 using namespace common;
@@ -73,7 +74,7 @@ TEST(MvccTrxLog, wal)
   }
 
   for (const string &table_name : table_names) {
-    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}));
+    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}, StorageFormat::ROW_FORMAT));
     ASSERT_EQ(RC::SUCCESS, db->sync());
   }
 
@@ -152,7 +153,7 @@ TEST(MvccTrxLog, wal)
   db2->trx_kit().destroy_trx(trx2);
 
   db2.reset();
-  db.reset();
+db.reset();
 }
 
 TEST(MvccTrxLog, wal2)
@@ -196,15 +197,14 @@ TEST(MvccTrxLog, wal2)
   }
 
   for (const string &table_name : table_names) {
-    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}));
+    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}, StorageFormat::ROW_FORMAT));
     ASSERT_EQ(RC::SUCCESS, db->sync());
   }
 
   ThreadPoolExecutor executor;
-  ASSERT_EQ(0, executor.init("Trx", 4, 4, 60 * 1000));
+  ASSERT_EQ(0, executor.init("trx", 4, 4, 60 * 1000));
 
-  TrxKit &trx_kit = db->trx_kit();
-
+  TrxKit   &trx_kit    = db->trx_kit();
   const int insert_num = 100;
   for (int i = 0; i < insert_num; i++) {
     auto trx_task = [&trx_kit, &table_names, &db, i] {
@@ -224,7 +224,6 @@ TEST(MvccTrxLog, wal2)
         }
 
         ASSERT_EQ(RC::SUCCESS, table->make_record(values.size(), values.data(), record));
-
         ASSERT_EQ(RC::SUCCESS, trx->insert_record(table, record));
       }
 
@@ -235,12 +234,6 @@ TEST(MvccTrxLog, wal2)
     ASSERT_EQ(0, executor.execute(trx_task));
   }
 
-  LOG_INFO("waiting for all tasks to be handled");
-  while (executor.queue_size() > 0) {
-    this_thread::sleep_for(chrono::milliseconds(100));
-  }
-  LOG_INFO("all tasks have been handled");
-
   db->sync();
 
   vector<string> table_names_part2;
@@ -248,7 +241,7 @@ TEST(MvccTrxLog, wal2)
   for (int i = table_num; i < table_num + table_num2; i++) {
     string table_name = "table_" + to_string(i);
     table_names_part2.push_back(table_name);
-    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}));
+    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}, StorageFormat::ROW_FORMAT));
     ASSERT_EQ(RC::SUCCESS, db->sync());
   }
 
@@ -385,7 +378,7 @@ TEST(MvccTrxLog, wal_rollback)
   }
 
   for (const string &table_name : table_names) {
-    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}));
+    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}, StorageFormat::ROW_FORMAT));
     ASSERT_EQ(RC::SUCCESS, db->sync());
   }
 
@@ -511,7 +504,7 @@ TEST(MvccTrxLog, wal_rollback_half)
   }
 
   for (const string &table_name : table_names) {
-    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}));
+    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}, StorageFormat::ROW_FORMAT));
     ASSERT_EQ(RC::SUCCESS, db->sync());
   }
 
@@ -642,7 +635,7 @@ TEST(MvccTrxLog, wal_rollback_abnormal)
   }
 
   for (const string &table_name : table_names) {
-    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}));
+    ASSERT_EQ(RC::SUCCESS, db->create_table(table_name.c_str(), attr_infos, {}, StorageFormat::ROW_FORMAT));
     ASSERT_EQ(RC::SUCCESS, db->sync());
   }
 

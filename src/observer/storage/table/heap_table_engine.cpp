@@ -341,3 +341,58 @@ RC HeapTableEngine::open()
   }
   return rc;
 }
+
+// 实现删除所有索引的方法
+RC HeapTableEngine::drop_all_indexes()
+{
+  RC rc = RC::SUCCESS;
+  
+  // 删除所有索引文件
+  for (Index *index : indexes_) {
+    string index_file = table_index_file(db_->path().c_str(), table_meta_->name(), index->index_meta().name());
+    
+    // 删除索引文件
+    if (filesystem::exists(index_file)) {
+      error_code ec;
+      if (!filesystem::remove(index_file, ec)) {
+        LOG_WARN("Failed to remove index file: %s, error=%s", index_file.c_str(), ec.message().c_str());
+        rc = RC::IOERR_WRITE;  // 将IOERR_DELETE替换为IOERR_WRITE
+        // 继续删除其他索引文件
+      }
+    }
+    
+    delete index;
+  }
+  indexes_.clear();
+  
+  return rc;
+}
+
+// 实现删除数据的方法
+RC HeapTableEngine::drop_data()
+{
+  RC rc = RC::SUCCESS;
+  
+  // 删除数据文件
+  string data_file = table_data_file(db_->path().c_str(), table_meta_->name());
+  if (filesystem::exists(data_file)) {
+    error_code ec;
+    if (!filesystem::remove(data_file, ec)) {
+      LOG_WARN("Failed to remove data file: %s, error=%s", data_file.c_str(), ec.message().c_str());
+      rc = RC::IOERR_WRITE;  // 将IOERR_DELETE替换为IOERR_WRITE
+    }
+  }
+  
+  // 关闭并清理资源
+  if (record_handler_ != nullptr) {
+    delete record_handler_;
+    record_handler_ = nullptr;
+  }
+  
+  if (data_buffer_pool_ != nullptr) {
+    data_buffer_pool_->close_file();
+    data_buffer_pool_ = nullptr;
+  }
+  
+  return rc;
+}

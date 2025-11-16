@@ -121,6 +121,10 @@ public:
 
   RC sync();
 
+  // 添加删除表相关的方法
+  RC drop_all_indexes();
+  RC drop_data();
+
 private:
   RC set_value_to_record(char *record_data, const Value &value, const FieldMeta *field);
 

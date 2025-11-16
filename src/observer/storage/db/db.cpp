@@ -415,3 +415,53 @@ RC Db::init_dblwr_buffer()
 LogHandler        &Db::log_handler() { return *log_handler_; }
 BufferPoolManager &Db::buffer_pool_manager() { return *buffer_pool_manager_; }
 TrxKit            &Db::trx_kit() { return *trx_kit_; }
+
+
+RC Db::drop_table(const char *table_name)
+{
+  if (nullptr == table_name || common::is_blank(table_name)) {
+    LOG_WARN("Invalid table name");
+    return RC::INVALID_ARGUMENT;
+  }
+
+  // 检查表是否存在
+  auto iter = opened_tables_.find(table_name);
+  if (iter == opened_tables_.end()) {
+    LOG_WARN("Table not exists: %s", table_name);
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+
+  Table *table = iter->second;
+  
+  // 删除表的所有索引
+  RC rc = table->drop_all_indexes();
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("Failed to drop indexes for table: %s, rc=%s", table_name, strrc(rc));
+    return rc;
+  }
+
+  // 删除表的数据文件
+  rc = table->drop_data();
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("Failed to drop data for table: %s, rc=%s", table_name, strrc(rc));
+    return rc;
+  }
+
+  // 删除表的元数据文件
+  string table_meta_file_path = table_meta_file(path_.c_str(), table_name);
+  if (filesystem::exists(table_meta_file_path)) {
+    error_code ec;
+    if (!filesystem::remove(table_meta_file_path, ec)) {
+      LOG_WARN("Failed to remove table meta file: %s, error=%s", 
+               table_meta_file_path.c_str(), ec.message().c_str());
+      return RC::IOERR_WRITE;  // 将IOERR_DELETE改为IOERR_WRITE
+    }
+  }
+
+  // 从内存中移除表
+  opened_tables_.erase(iter);
+  delete table;
+
+  LOG_INFO("Drop table success: %s", table_name);
+  return RC::SUCCESS;
+}

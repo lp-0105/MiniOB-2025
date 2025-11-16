@@ -207,7 +207,7 @@ RC UpdateExecutor::execute(SQLStageEvent *sql_event)
 
   if (rc == RC::SUCCESS) {
     LOG_INFO("Update completed. %d records updated in table %s", updated_count, table->name());
-    // 设置返回消息
+    // 设置返回消息 - 去掉重复的SUCCESS前缀
     char response[256];
     snprintf(response, sizeof(response), "%d records updated", updated_count);
     sql_event->session_event()->sql_result()->set_state_string(response);

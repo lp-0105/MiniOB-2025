@@ -32,7 +32,7 @@ class Db;
 /**
  * @brief table engine
  */
-class TableEngine
+class TableEngine 
 {
 public:
   TableEngine(TableMeta *table_meta) : table_meta_(table_meta) {}
@@ -60,6 +60,14 @@ public:
   // 添加删除表相关的方法
   virtual RC drop_all_indexes() = 0;
   virtual RC drop_data() = 0;
+
+  /**
+   * @brief 更新记录
+   * @param record 要更新的记录
+   * @param attribute_name 要更新的字段名
+   * @param value 新的值
+   */
+  virtual RC update_record(const Record &record, const char *attribute_name, const Value &value) = 0;
 
 protected:
   TableMeta *table_meta_ = nullptr;

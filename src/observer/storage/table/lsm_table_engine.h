@@ -38,6 +38,9 @@ public:
     return RC::UNIMPLEMENTED;
   }
   RC get_record(const RID &rid, Record &record) override { return RC::UNIMPLEMENTED; }
+  
+  // 添加update_record方法声明
+  RC update_record(const Record &record, const char *attribute_name, const Value &value) override;
 
   RC create_index(Trx *trx, const FieldMeta *field_meta, const char *index_name) override { return RC::UNIMPLEMENTED; }
   RC get_record_scanner(RecordScanner *&scanner, Trx *trx, ReadWriteMode mode) override;

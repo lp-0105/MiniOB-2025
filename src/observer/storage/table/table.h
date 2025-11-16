@@ -143,4 +143,18 @@ private:
   // vector<Index *>    indexes_;
   unique_ptr<TableEngine> engine_      = nullptr;
   LobFileHandler         *lob_handler_ = nullptr;
+
+  // 删除重复的Table类定义
+  // class Table 
+  // {
+  // public:
+  //   // ... existing methods ...
+  //   /**
+  //    * @brief 更新记录
+  //    * @param record 要更新的记录
+  //    * @param attribute_name 要更新的字段名
+  //    * @param value 新的值
+  //    */
+  //   RC update_record(const Record &record, const char *attribute_name, const Value &value);
+  // };
 };

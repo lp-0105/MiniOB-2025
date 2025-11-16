@@ -14,8 +14,11 @@ See the Mulan PSL v2 for more details. */
 #include "storage/index/index.h"
 #include "storage/record/record_manager.h"
 #include "storage/db/db.h"
+#include "storage/buffer/disk_buffer_pool.h"
+#include <vector>
 
 class Table;
+class RecordFileHandler;
 /**
  * @brief table engine
  */
@@ -31,11 +34,11 @@ public:
   RC delete_record(const Record &record) override;
   RC insert_record_with_trx(Record &record, Trx *trx) override { return RC::UNSUPPORTED; }
   RC delete_record_with_trx(const Record &record, Trx *trx) override { return RC::UNSUPPORTED; }
-  RC update_record_with_trx(const Record &old_record, const Record &new_record, Trx *trx) override
-  {
-    return RC::UNSUPPORTED;
-  }
+  RC update_record_with_trx(const Record &old_record, const Record &new_record, Trx *trx) override;
   RC get_record(const RID &rid, Record &record) override;
+
+  // 添加update_record方法声明
+  RC update_record(const Record &record, const char *attribute_name, const Value &value) override;
 
   RC create_index(Trx *trx, const FieldMeta *field_meta, const char *index_name) override;
   RC get_record_scanner(RecordScanner *&scanner, Trx *trx, ReadWriteMode mode) override;
@@ -56,11 +59,12 @@ public:
 private:
   RC insert_entry_of_indexes(const char *record, const RID &rid);
   RC delete_entry_of_indexes(const char *record, const RID &rid, bool error_on_not_exists);
+  RC update_entry_of_indexes(const char *old_record, const char *new_record, const RID &rid);
 
 private:
   DiskBufferPool    *data_buffer_pool_ = nullptr;  /// 数据文件关联的buffer pool
   RecordFileHandler *record_handler_   = nullptr;  /// 记录操作
-  vector<Index *>    indexes_;
+  std::vector<Index *> indexes_;
   Db                *db_;
   Table             *table_;
 };

@@ -48,6 +48,7 @@ enum class PhysicalOperatorType
   STRING_LIST,
   DELETE,
   INSERT,
+  UPDATE,  // 添加UPDATE类型
   SCALAR_GROUP_BY,
   HASH_GROUP_BY,
   GROUP_BY_VEC,

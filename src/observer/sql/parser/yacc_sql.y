@@ -15,6 +15,8 @@
 
 using namespace std;
 
+static vector<vector<ConditionSqlNode>> *current_join_conditions = nullptr;
+
 // 辅助函数：检查字符串是否为日期格式
 bool is_date_string(const char *str) {
     if (!str) return false;
@@ -107,8 +109,11 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         FROM
         WHERE
         AND
+        OR
         SET
         ON
+        JOIN
+        INNER
         LOAD
         DATA
         INFILE
@@ -181,10 +186,12 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <value_list>          value_list
 %type <condition_list>      where
 %type <condition_list>      condition_list
+%type <condition_list>      join_conditions
 %type <cstring>             storage_format
 %type <key_list>            primary_key
 %type <key_list>            attr_list
 %type <relation_list>       rel_list
+%type <relation_list>       table_references
 %type <expression>          expression
 %type <expression>          aggregate_expression
 %type <expression_list>     expression_list
@@ -507,7 +514,7 @@ update_stmt:      /*  update 语句的语法解析树*/
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT expression_list FROM rel_list where group_by
+    SELECT expression_list FROM table_references where group_by
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
@@ -528,6 +535,16 @@ select_stmt:        /*  select 语句的语法解析树*/
       if ($6 != nullptr) {
         $$->selection.group_by.swap(*$6);
         delete $6;
+      }
+      
+      // 处理JOIN条件
+      if (current_join_conditions != nullptr) {
+        $$->selection.has_join = true;
+        $$->selection.join_conditions.swap(*current_join_conditions);
+        delete current_join_conditions;
+        current_join_conditions = nullptr;
+      } else {
+        $$->selection.has_join = false;
       }
     }
     ;
@@ -619,19 +636,53 @@ relation:
     }
     ;
 rel_list:
-    relation {
+    relation
+    {
       $$ = new vector<string>();
       $$->push_back($1);
     }
-    | relation COMMA rel_list {
-      if ($3 != nullptr) {
-        $$ = $3;
-      } else {
-        $$ = new vector<string>;
-      }
-
-      $$->insert($$->begin(), $1);
+    | rel_list COMMA relation
+    {
+      $$ = $1;
+      $$->push_back($3);
     }
+    ;
+table_references:
+    relation
+    {
+      $$ = new vector<string>();
+      $$->push_back($1);
+    }
+    | table_references COMMA relation
+    {
+      $$ = $1;
+      $$->push_back($3);
+    }
+    | table_references INNER JOIN relation ON join_conditions
+    {
+      $$ = $1;
+      $$->push_back($4);  // $4是relation
+      
+      // 存储JOIN条件到全局变量中
+      if (current_join_conditions == nullptr) {
+        current_join_conditions = new vector<vector<ConditionSqlNode>>();
+      }
+      current_join_conditions->push_back(*$6);  // $6是join_conditions
+      delete $6;
+    }
+    | table_references JOIN relation ON join_conditions  // 扩展：支持简写JOIN
+    {
+      $$ = $1;
+      $$->push_back($3);  // $3是relation
+      
+      // 存储JOIN条件到全局变量中
+      if (current_join_conditions == nullptr) {
+        current_join_conditions = new vector<vector<ConditionSqlNode>>();
+      }
+      current_join_conditions->push_back(*$5);  // $5是join_conditions
+      delete $5;
+    }
+    // 删除有问题的多JOIN规则，用递归方式替代
     ;
 
 where:
@@ -657,6 +708,31 @@ condition_list:
       $$ = $3;
       $$->emplace_back(*$1);
       delete $1;
+    }
+    ;
+
+join_conditions:
+    condition
+    {
+      $$ = new vector<ConditionSqlNode>;
+      $$->emplace_back(*$1);
+      delete $1;
+    }
+    | join_conditions AND condition
+    {
+      $$ = $1;
+      $$->emplace_back(*$3);
+      delete $3;
+    }
+    | join_conditions OR condition
+    {
+      $$ = $1;
+      $$->emplace_back(*$3);
+      delete $3;
+    }
+    | LBRACE join_conditions RBRACE  // 支持括号
+    {
+      $$ = $2;
     }
     ;
 condition:

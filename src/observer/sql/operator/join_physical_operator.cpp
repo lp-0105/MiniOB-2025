@@ -14,9 +14,9 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/operator/join_physical_operator.h"
 
-NestedLoopJoinPhysicalOperator::NestedLoopJoinPhysicalOperator() {}
+JoinPhysicalOperator::JoinPhysicalOperator() {}
 
-RC NestedLoopJoinPhysicalOperator::open(Trx *trx)
+RC JoinPhysicalOperator::open(Trx *trx)
 {
   if (children_.size() != 2) {
     LOG_WARN("nlj operator should have 2 children");
@@ -34,37 +34,42 @@ RC NestedLoopJoinPhysicalOperator::open(Trx *trx)
   return rc;
 }
 
-RC NestedLoopJoinPhysicalOperator::next()
+RC JoinPhysicalOperator::next()
 {
-  bool left_need_step = (left_tuple_ == nullptr);
   RC   rc             = RC::SUCCESS;
-  if (round_done_) {
-    left_need_step = true;
-  } else {
+  while (RC::SUCCESS == rc) {
+    bool left_need_step = (left_tuple_ == nullptr);
+    if (round_done_) {
+      left_need_step = true;
+    }
+
+    if (left_need_step) {
+      rc = left_next();
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+    }
+
     rc = right_next();
     if (rc != RC::SUCCESS) {
       if (rc == RC::RECORD_EOF) {
-        left_need_step = true;
+        rc = RC::SUCCESS;
+        round_done_ = true;
+        continue;
       } else {
         return rc;
       }
-    } else {
-      return rc;  // got one tuple from right
+    }
+    
+    // 检查JOIN条件是否满足
+    if (evaluate_join_conditions()) {
+      return RC::SUCCESS;  // 找到满足条件的记录
     }
   }
-
-  if (left_need_step) {
-    rc = left_next();
-    if (rc != RC::SUCCESS) {
-      return rc;
-    }
-  }
-
-  rc = right_next();
   return rc;
 }
 
-RC NestedLoopJoinPhysicalOperator::close()
+RC JoinPhysicalOperator::close()
 {
   RC rc = left_->close();
   if (rc != RC::SUCCESS) {
@@ -82,9 +87,9 @@ RC NestedLoopJoinPhysicalOperator::close()
   return rc;
 }
 
-Tuple *NestedLoopJoinPhysicalOperator::current_tuple() { return &joined_tuple_; }
+Tuple *JoinPhysicalOperator::current_tuple() { return &joined_tuple_; }
 
-RC NestedLoopJoinPhysicalOperator::left_next()
+RC JoinPhysicalOperator::left_next()
 {
   RC rc = RC::SUCCESS;
   rc    = left_->next();
@@ -97,7 +102,7 @@ RC NestedLoopJoinPhysicalOperator::left_next()
   return rc;
 }
 
-RC NestedLoopJoinPhysicalOperator::right_next()
+RC JoinPhysicalOperator::right_next()
 {
   RC rc = RC::SUCCESS;
   if (round_done_) {
@@ -130,4 +135,50 @@ RC NestedLoopJoinPhysicalOperator::right_next()
   right_tuple_ = right_->current_tuple();
   joined_tuple_.set_right(right_tuple_);
   return rc;
+}
+
+void JoinPhysicalOperator::set_predicates(vector<unique_ptr<Expression>> &&predicates)
+{
+  // 清除现有条件
+  predicates_.clear();
+  
+  // 逐个添加条件，避免直接移动整个vector可能导致的内存问题
+  for (auto &pred : predicates) {
+    if (pred) {
+      predicates_.push_back(std::move(pred));
+    }
+  }
+}
+
+bool JoinPhysicalOperator::evaluate_join_conditions()
+{
+  // 如果没有JOIN条件，默认返回true（笛卡尔积）
+  if (predicates_.empty()) {
+    return true;
+  }
+  
+  // 创建一个复合元组，包含左右两个元组
+  // 这样表达式才能正确引用两个表的字段
+  JoinedTuple composite_tuple;
+  composite_tuple.set_left(left_tuple_);
+  composite_tuple.set_right(right_tuple_);
+  
+  for (auto &predicate : predicates_) {
+    if (predicate == nullptr) {
+      continue;
+    }
+    
+    Value value;
+    RC rc = predicate->get_value(composite_tuple, value);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to evaluate join condition. rc=%s", strrc(rc));
+      return false;
+    }
+    
+    if (value.get_boolean() == false) {
+      return false;  // 任何一个条件不满足，就返回false
+    }
+  }
+  
+  return true;  // 所有条件都满足
 }

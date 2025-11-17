@@ -22,13 +22,17 @@ See the Mulan PSL v2 for more details. */
  * @details 依次遍历左表的每一行，然后关联右表的每一行
  * @ingroup PhysicalOperator
  */
-class NestedLoopJoinPhysicalOperator : public PhysicalOperator
+class JoinPhysicalOperator : public PhysicalOperator
 {
 public:
-  NestedLoopJoinPhysicalOperator();
-  virtual ~NestedLoopJoinPhysicalOperator() = default;
+  JoinPhysicalOperator();
+  virtual ~JoinPhysicalOperator() = default;
 
   PhysicalOperatorType type() const override { return PhysicalOperatorType::NESTED_LOOP_JOIN; }
+
+  OpType get_op_type() const override { return OpType::INNERNLJOIN; }
+
+  void set_predicates(vector<unique_ptr<Expression>> &&predicates);
 
   RC     open(Trx *trx) override;
   RC     next() override;
@@ -38,6 +42,8 @@ public:
 private:
   RC left_next();   //! 左表遍历下一条数据
   RC right_next();  //! 右表遍历下一条数据，如果上一轮结束了就重新开始新的一轮
+
+  bool evaluate_join_conditions();  //! 评估JOIN条件是否满足
 
 private:
   Trx *trx_ = nullptr;
@@ -50,4 +56,6 @@ private:
   JoinedTuple       joined_tuple_;         //! 当前关联的左右两个tuple
   bool              round_done_   = true;  //! 右表遍历的一轮是否结束
   bool              right_closed_ = true;  //! 右表算子是否已经关闭
+  
+  vector<unique_ptr<Expression>> predicates_;  //! JOIN条件列表
 };

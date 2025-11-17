@@ -92,6 +92,10 @@ struct SelectSqlNode
   vector<string>                 relations;    ///< 查询的表
   vector<ConditionSqlNode>       conditions;   ///< 查询条件，使用AND串联起来多个条件
   vector<unique_ptr<Expression>> group_by;     ///< group by clause
+  
+  // JOIN相关字段
+  bool                           has_join;     ///< 是否有JOIN操作
+  vector<vector<ConditionSqlNode>> join_conditions;  ///< 每个JOIN对应的条件列表
 };
 
 /**

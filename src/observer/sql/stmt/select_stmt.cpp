@@ -29,6 +29,13 @@ SelectStmt::~SelectStmt()
     delete filter_stmt_;
     filter_stmt_ = nullptr;
   }
+  
+  for (FilterStmt *join_filter : join_filter_stmts_) {
+    if (join_filter != nullptr) {
+      delete join_filter;
+    }
+  }
+  join_filter_stmts_.clear();
 }
 
 RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
@@ -100,12 +107,32 @@ RC SelectStmt::create(Db *db, SelectSqlNode &select_sql, Stmt *&stmt)
     return rc;
   }
 
+  // 处理JOIN条件
+  vector<FilterStmt *> join_filter_stmts;
+  if (select_sql.has_join && !select_sql.join_conditions.empty()) {
+    for (const auto &join_condition_group : select_sql.join_conditions) {
+      FilterStmt *join_filter = nullptr;
+      rc = FilterStmt::create(db,
+          default_table,
+          &table_map,
+          join_condition_group.data(),
+          static_cast<int>(join_condition_group.size()),
+          join_filter);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("cannot construct join filter stmt");
+        return rc;
+      }
+      join_filter_stmts.push_back(join_filter);
+    }
+  }
+
   // everything alright
   SelectStmt *select_stmt = new SelectStmt();
 
   select_stmt->tables_.swap(tables);
   select_stmt->query_expressions_.swap(bound_expressions);
   select_stmt->filter_stmt_ = filter_stmt;
+  select_stmt->join_filter_stmts_ = join_filter_stmts;
   select_stmt->group_by_.swap(group_by_expressions);
   stmt                      = select_stmt;
   return RC::SUCCESS;

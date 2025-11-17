@@ -29,7 +29,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/insert_logical_operator.h"
 #include "sql/operator/insert_physical_operator.h"
 #include "sql/operator/join_logical_operator.h"
-#include "sql/operator/nested_loop_join_physical_operator.h"
+#include "sql/operator/join_physical_operator.h"
 #include "sql/operator/predicate_logical_operator.h"
 #include "sql/operator/predicate_physical_operator.h"
 #include "sql/operator/project_logical_operator.h"
@@ -303,14 +303,22 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
   RC rc = RC::SUCCESS;
 
   vector<unique_ptr<LogicalOperator>> &child_opers = join_oper.children();
-  if (child_opers.size() != 2) {
-    LOG_WARN("join operator should have 2 children, but have %d", child_opers.size());
+  if (child_opers.size() < 2) {
+    LOG_WARN("join operator should have at least 2 children, but have %d", child_opers.size());
     return RC::INTERNAL;
   }
   if (session->hash_join_on() && can_use_hash_join(join_oper)) {
-    // your code here
-  } else {
-    unique_ptr<PhysicalOperator> join_physical_oper(new NestedLoopJoinPhysicalOperator());
+    // 创建Hash Join物理算子
+    unique_ptr<HashJoinPhysicalOperator> hash_join_oper(new HashJoinPhysicalOperator());
+    
+    // 设置JOIN条件
+    vector<unique_ptr<Expression>> join_predicates;
+    for (auto &predicate : join_oper.get_join_predicates()) {
+      join_predicates.emplace_back(predicate->copy());
+    }
+    hash_join_oper->set_predicates(std::move(join_predicates));
+    
+    // 添加子节点
     for (auto &child_oper : child_opers) {
       unique_ptr<PhysicalOperator> child_physical_oper;
       rc = create(*child_oper, child_physical_oper, session);
@@ -318,10 +326,32 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
         LOG_WARN("failed to create physical child oper. rc=%s", strrc(rc));
         return rc;
       }
-
+      hash_join_oper->add_child(std::move(child_physical_oper));
+    }
+    
+    oper = std::move(hash_join_oper);
+  } else {
+    // 创建Nested Loop Join物理算子
+    unique_ptr<JoinPhysicalOperator> join_physical_oper(new JoinPhysicalOperator());
+    
+    // 设置JOIN条件
+    vector<unique_ptr<Expression>> join_predicates;
+    for (auto &predicate : join_oper.get_join_predicates()) {
+      join_predicates.emplace_back(predicate->copy());
+    }
+    join_physical_oper->set_predicates(std::move(join_predicates));
+    
+    // 添加子节点
+    for (auto &child_oper : child_opers) {
+      unique_ptr<PhysicalOperator> child_physical_oper;
+      rc = create(*child_oper, child_physical_oper, session);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("failed to create physical child oper. rc=%s", strrc(rc));
+        return rc;
+      }
       join_physical_oper->add_child(std::move(child_physical_oper));
     }
-
+    
     oper = std::move(join_physical_oper);
   }
   return rc;
@@ -329,8 +359,36 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
 
 bool PhysicalPlanGenerator::can_use_hash_join(JoinLogicalOperator &join_oper)
 {
-  // your code here
-  return false;
+  // 检查JOIN条件是否适合Hash Join
+  auto &join_predicates = join_oper.get_join_predicates();
+  if (join_predicates.empty()) {
+    return false; // 没有JOIN条件，不适合Hash Join
+  }
+  
+  // 检查每个JOIN条件是否是等值比较
+  for (auto &predicate : join_predicates) {
+    if (predicate->type() != ExprType::COMPARISON) {
+      return false; // 非比较表达式，不适合Hash Join
+    }
+    
+    auto *comparison_expr = static_cast<ComparisonExpr*>(predicate.get());
+    if (comparison_expr->comp() != CompOp::EQUAL_TO) {
+      return false; // 非等值比较，不适合Hash Join
+    }
+    
+    // 检查是否包含字段表达式
+    bool has_field = false;
+    if (comparison_expr->left()->type() == ExprType::FIELD ||
+        comparison_expr->right()->type() == ExprType::FIELD) {
+      has_field = true;
+    }
+    
+    if (!has_field) {
+      return false; // 没有字段表达式，不适合Hash Join
+    }
+  }
+  
+  return true; // 所有条件都适合Hash Join
 }
 
 RC PhysicalPlanGenerator::create_plan(CalcLogicalOperator &logical_oper, unique_ptr<PhysicalOperator> &oper, Session* session)

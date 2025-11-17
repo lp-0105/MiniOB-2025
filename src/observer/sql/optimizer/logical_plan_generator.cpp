@@ -92,37 +92,88 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
 
   unique_ptr<LogicalOperator> table_oper(nullptr);
   last_oper = &table_oper;
-  unique_ptr<LogicalOperator> predicate_oper;
-
-  RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
-  if (OB_FAIL(rc)) {
-    LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
-    return rc;
-  }
-
+  
   const vector<Table *> &tables = select_stmt->tables();
-  for (Table *table : tables) {
-
-    unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, ReadWriteMode::READ_ONLY));
-    if (table_oper == nullptr) {
-      table_oper = std::move(table_get_oper);
-    } else {
+  const vector<FilterStmt *> &join_filter_stmts = select_stmt->join_filter_stmts();
+  
+  // 处理多表连接
+  if (tables.size() > 1) {
+    // 创建第一个表的TableGetLogicalOperator
+    unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(tables[0], ReadWriteMode::READ_ONLY));
+    table_oper = std::move(table_get_oper);
+    
+    // 为每个后续表创建JoinLogicalOperator
+    for (size_t i = 1; i < tables.size(); i++) {
+      unique_ptr<LogicalOperator> next_table_oper(new TableGetLogicalOperator(tables[i], ReadWriteMode::READ_ONLY));
+      
       JoinLogicalOperator *join_oper = new JoinLogicalOperator;
       join_oper->add_child(std::move(table_oper));
-      join_oper->add_child(std::move(table_get_oper));
+      join_oper->add_child(std::move(next_table_oper));
+      
+      // 添加JOIN条件 - 支持多个JOIN条件
+      if (i-1 < join_filter_stmts.size() && join_filter_stmts[i-1] != nullptr) {
+        const vector<FilterUnit *> &filter_units = join_filter_stmts[i-1]->filter_units();
+        for (const FilterUnit *filter_unit : filter_units) {
+          const FilterObj &filter_obj_left  = filter_unit->left();
+          const FilterObj &filter_obj_right = filter_unit->right();
+
+          unique_ptr<Expression> left(filter_obj_left.is_attr
+                                          ? static_cast<Expression *>(new FieldExpr(filter_obj_left.field))
+                                          : static_cast<Expression *>(new ValueExpr(filter_obj_left.value)));
+
+          unique_ptr<Expression> right(filter_obj_right.is_attr
+                                           ? static_cast<Expression *>(new FieldExpr(filter_obj_right.field))
+                                           : static_cast<Expression *>(new ValueExpr(filter_obj_right.value)));
+
+          // 处理类型转换
+          if (left->value_type() != right->value_type()) {
+            auto left_to_right_cost = implicit_cast_cost(left->value_type(), right->value_type());
+            auto right_to_left_cost = implicit_cast_cost(right->value_type(), left->value_type());
+            if (left_to_right_cost <= right_to_left_cost && left_to_right_cost != INT32_MAX) {
+              left = make_unique<CastExpr>(std::move(left), right->value_type());
+            } else if (right_to_left_cost < left_to_right_cost && right_to_left_cost != INT32_MAX) {
+              right = make_unique<CastExpr>(std::move(right), left->value_type());
+            }
+          }
+
+          ComparisonExpr *cmp_expr = new ComparisonExpr(filter_unit->comp(), std::move(left), std::move(right));
+          join_oper->add_join_predicate(unique_ptr<Expression>(cmp_expr));
+        }
+      }
+      
       table_oper = unique_ptr<LogicalOperator>(join_oper);
     }
-  }
-
-
-  if (predicate_oper) {
-    if (*last_oper) {
-      predicate_oper->add_child(std::move(*last_oper));
+  } else {
+    // 单表情况
+    for (Table *table : tables) {
+      unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, ReadWriteMode::READ_ONLY));
+      if (table_oper == nullptr) {
+        table_oper = std::move(table_get_oper);
+      } else {
+        JoinLogicalOperator *join_oper = new JoinLogicalOperator;
+        join_oper->add_child(std::move(table_oper));
+        join_oper->add_child(std::move(table_get_oper));
+        table_oper = unique_ptr<LogicalOperator>(join_oper);
+      }
     }
-
-    last_oper = &predicate_oper;
   }
+  
+  // 创建WHERE条件
+  FilterStmt *filter_stmt = select_stmt->filter_stmt();
+  if (filter_stmt != nullptr) {
+    unique_ptr<LogicalOperator> filter_oper;
+    create_plan(filter_stmt, filter_oper);
+    if (filter_oper) {
+      if (table_oper) {
+        filter_oper->add_child(std::move(table_oper));
+      }
+      table_oper = std::move(filter_oper);
+    }
+  }
+  
+  *last_oper = std::move(table_oper);
 
+  RC rc = RC::SUCCESS;
   unique_ptr<LogicalOperator> group_by_oper;
   rc = create_group_by_plan(select_stmt, group_by_oper);
   if (OB_FAIL(rc)) {

@@ -18,14 +18,32 @@ See the Mulan PSL v2 for more details. */
 int IntegerType::compare(const Value &left, const Value &right) const
 {
   ASSERT(left.attr_type() == AttrType::INTS, "left type is not integer");
-  ASSERT(right.attr_type() == AttrType::INTS || right.attr_type() == AttrType::FLOATS, "right type is not numeric");
+  
+  // 如果右边是整数类型，直接比较
   if (right.attr_type() == AttrType::INTS) {
     return common::compare_int((void *)&left.value_.int_value_, (void *)&right.value_.int_value_);
-  } else if (right.attr_type() == AttrType::FLOATS) {
+  }
+  
+  // 如果右边是浮点类型，转换为浮点数比较
+  if (right.attr_type() == AttrType::FLOATS) {
     float left_val  = left.get_float();
     float right_val = right.get_float();
     return common::compare_float((void *)&left_val, (void *)&right_val);
   }
+  
+  // 如果右边是字符串类型，尝试将右边的字符串转换为整数进行比较
+  if (right.attr_type() == AttrType::CHARS) {
+    try {
+      int right_val = stoi(string(right.value_.pointer_value_));
+      return common::compare_int((void *)&left.value_.int_value_, (void *)&right_val);
+    } catch (exception const &ex) {
+      LOG_TRACE("failed to convert string to int. s=%s, ex=%s", right.value_.pointer_value_, ex.what());
+      // 如果转换失败，认为任何整数都大于无法转换的字符串
+      return 1;
+    }
+  }
+  
+  // 其他类型不支持比较
   return INT32_MAX;
 }
 

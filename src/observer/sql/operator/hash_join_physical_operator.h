@@ -39,7 +39,7 @@ public:
   void set_predicates(vector<unique_ptr<Expression>> &&predicates);
 
 private:
-  bool evaluate_join_conditions();  //! 评估JOIN条件是否满足
+  bool evaluate_join_conditions(JoinedTuple &joined_tuple);  //! 评估JOIN条件是否满足
 
 private:
   Trx *trx_ = nullptr;

@@ -185,8 +185,13 @@ function do_build
     return 1
   fi
   
-  echo "${CMAKE_COMMAND_MINIOB} ${TOPDIR} $@"
-  ${CMAKE_COMMAND_MINIOB} -S ${TOPDIR} $@
+  # 输出当前工作目录和TOPDIR，用于调试
+  echo "Current working directory: $(pwd)"
+  echo "TOPDIR: ${TOPDIR}"
+  
+  # 添加额外的包含路径，确保在任何环境下都能找到cppjieba头文件
+  echo "${CMAKE_COMMAND_MINIOB} ${TOPDIR} -DCMAKE_CXX_FLAGS=-I${TOPDIR}/deps/3rd/cppjieba/include\\ -I${TOPDIR}/deps/3rd/cppjieba/deps/limonp/include $@"
+  ${CMAKE_COMMAND_MINIOB} -S ${TOPDIR} -DCMAKE_CXX_FLAGS="-I${TOPDIR}/deps/3rd/cppjieba/include -I${TOPDIR}/deps/3rd/cppjieba/deps/limonp/include" $@
 }
 
 function do_clean

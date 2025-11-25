@@ -74,7 +74,8 @@ function prepare_build_dir
 
 function do_init
 {
-  git submodule update --init || return
+  # 初始化除了cppjieba之外的子模块
+  git submodule update --init --exclude=deps/3rd/cppjieba || return
   git -C "deps/3rd/libevent" checkout 112421c8fa4840acd73502f2ab6a674fc025de37 || return
   # git submodule update --remote "deps/3rd/libevent" || return
   git -C "deps/3rd/jsoncpp" checkout 1.9.6 || return
@@ -120,6 +121,14 @@ function do_init
     mkdir -p build && \
     cd build && \
     ${CMAKE_COMMAND_THIRD_PARTY} .. -DCMAKE_BUILD_TYPE=Release -DREPLXX_BUILD_EXAMPLES=OFF -DREPLXX_BUILD_PACKAGE=OFF && \
+    ${MAKE_COMMAND} -j4 && \
+    ${MAKE_COMMAND} install
+
+  # build cppjieba
+  cd ${TOPDIR}/deps/3rd/cppjieba && \
+    mkdir -p build && \
+    cd build && \
+    ${CMAKE_COMMAND_THIRD_PARTY} .. && \
     ${MAKE_COMMAND} -j4 && \
     ${MAKE_COMMAND} install
 

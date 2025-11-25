@@ -14,11 +14,12 @@ See the Mulan PSL v2 for more details. */
 JiebaTokenizer::JiebaTokenizer() 
   : jieba_(nullptr) {
   // 初始化cppjieba，使用默认词典路径
-  const char* DICT_PATH = "../../deps/3rd/cppjieba/dict/jieba.dict.utf8";
-  const char* HMM_PATH = "../../deps/3rd/cppjieba/dict/hmm_model.utf8";
-  const char* USER_DICT_PATH = "../../deps/3rd/cppjieba/dict/user.dict.utf8";
-  const char* IDF_PATH = "../../deps/3rd/cppjieba/dict/idf.utf8";
-  const char* STOP_WORD_PATH = "../../deps/3rd/cppjieba/dict/stop_words.utf8";
+  std::string base_path = std::string(getenv("PWD")) + "/deps/3rd/cppjieba/dict/";
+  const char* DICT_PATH = (base_path + "jieba.dict.utf8").c_str();
+  const char* HMM_PATH = (base_path + "hmm_model.utf8").c_str();
+  const char* USER_DICT_PATH = (base_path + "user.dict.utf8").c_str();
+  const char* IDF_PATH = (base_path + "idf.utf8").c_str();
+  const char* STOP_WORD_PATH = (base_path + "stop_words.utf8").c_str();
   
   jieba_ = new cppjieba::Jieba(DICT_PATH, HMM_PATH, USER_DICT_PATH, IDF_PATH, STOP_WORD_PATH);
 }

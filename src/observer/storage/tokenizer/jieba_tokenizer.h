@@ -9,7 +9,7 @@ MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
 
 #pragma once
-#include "deps/3rd/cppjieba/include/cppjieba/Jieba.hpp"
+#include "cppjieba/Jieba.hpp"
 #include "common/sys/rc.h"
 #include "storage/tokenizer/tokenizer.h"
 

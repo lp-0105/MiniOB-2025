@@ -83,6 +83,9 @@ function do_init
   git -C "deps/3rd/libevent" checkout 112421c8fa4840acd73502f2ab6a674fc025de37 || return
   # git submodule update --remote "deps/3rd/libevent" || return
   git -C "deps/3rd/jsoncpp" checkout 1.9.6 || return
+  
+  # 初始化cppjieba的子模块limonp
+  git submodule update --init --recursive deps/3rd/cppjieba || return
 
   current_dir=$PWD
 

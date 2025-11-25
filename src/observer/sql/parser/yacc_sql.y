@@ -190,7 +190,6 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <cstring>             storage_format
 %type <key_list>            primary_key
 %type <key_list>            attr_list
-%type <relation_list>       rel_list
 %type <relation_list>       table_references
 %type <expression>          expression
 %type <expression>          aggregate_expression
@@ -635,18 +634,7 @@ relation:
       $$ = $1;
     }
     ;
-rel_list:
-    relation
-    {
-      $$ = new vector<string>();
-      $$->push_back($1);
-    }
-    | rel_list COMMA relation
-    {
-      $$ = $1;
-      $$->push_back($3);
-    }
-    ;
+
 table_references:
     relation
     {

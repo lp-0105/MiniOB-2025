@@ -13,6 +13,4 @@
 [submodule "deps/3rd/replxx"]
 	path = deps/3rd/replxx
 	url = https://hk.gh-proxy.org/https://github.com/AmokHuginnsson/replxx
-[submodule "deps/3rd/cppjieba"]
-	path = deps/3rd/cppjieba
-	url = https://hk.gh-proxy.org/https://github.com/yanyiwu/cppjieba
+

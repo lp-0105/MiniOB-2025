@@ -9,17 +9,17 @@ MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
 
 #pragma once
-#include "cppjieba/Jieba.hpp"
+#include "deps/cppjieba/include/cppjieba/Jieba.hpp"
 #include "common/sys/rc.h"
 #include "storage/tokenizer/tokenizer.h"
 
 class JiebaTokenizer : public Tokenizer
 {
 public:
-  JiebaTokenizer()           = default;
-  ~JiebaTokenizer() override = default;
+  JiebaTokenizer();
+  ~JiebaTokenizer() override;
   RC cut(std::string &text, std::vector<std::string> &tokens) override;
 
 private:
-  cppjieba::Jieba jieba;
+  cppjieba::Jieba* jieba_;
 };

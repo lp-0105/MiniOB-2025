@@ -11,17 +11,32 @@ See the Mulan PSL v2 for more details. */
 #include "storage/tokenizer/jieba_tokenizer.h"
 #include "common/utils/private_accessor.h"
 
-IMPLEMENT_GET_PRIVATE_VAR(KeywordExtractor, cppjieba::KeywordExtractor, stopWords_, std::unordered_set<std::string>)
+JiebaTokenizer::JiebaTokenizer() 
+  : jieba_(nullptr) {
+  // 初始化cppjieba，使用默认词典路径
+  const char* DICT_PATH = "../../deps/3rd/cppjieba/dict/jieba.dict.utf8";
+  const char* HMM_PATH = "../../deps/3rd/cppjieba/dict/hmm_model.utf8";
+  const char* USER_DICT_PATH = "../../deps/3rd/cppjieba/dict/user.dict.utf8";
+  const char* IDF_PATH = "../../deps/3rd/cppjieba/dict/idf.utf8";
+  const char* STOP_WORD_PATH = "../../deps/3rd/cppjieba/dict/stop_words.utf8";
+  
+  jieba_ = new cppjieba::Jieba(DICT_PATH, HMM_PATH, USER_DICT_PATH, IDF_PATH, STOP_WORD_PATH);
+}
 
-RC JiebaTokenizer::cut(std::string &text, std::vector<std::string> &tokens)
-{
-    // Implement Jieba tokenizer logic here
-    jieba.Cut(text, tokens);
-    // Remove stop words
-    auto &stopWords_ = *GET_PRIVATE(cppjieba::KeywordExtractor, &jieba.extractor, KeywordExtractor, stopWords_);
-    tokens.erase(std::remove_if(tokens.begin(),
-                        tokens.end(),
-                        [&stopWords_](const std::string &word) { return stopWords_.find(word) != stopWords_.end(); }),
-        tokens.end());
-    return RC::SUCCESS;
+JiebaTokenizer::~JiebaTokenizer() {
+  if (jieba_ != nullptr) {
+    delete jieba_;
+    jieba_ = nullptr;
+  }
+}
+
+RC JiebaTokenizer::cut(std::string &text, std::vector<std::string> &tokens) {
+  if (jieba_ == nullptr) {
+    return RC::INVALID_ARGUMENT;
+  }
+  
+  // 使用项目内部的cppjieba进行分词
+  jieba_->Cut(text, tokens, true);
+  
+  return RC::SUCCESS;
 }

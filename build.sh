@@ -84,8 +84,19 @@ function do_init
   # git submodule update --remote "deps/3rd/libevent" || return
   git -C "deps/3rd/jsoncpp" checkout 1.9.6 || return
   
+  # 确保cppjieba目录存在，如果不存在则创建
+  if [ ! -d "deps/3rd/cppjieba" ]; then
+    echo "cppjieba directory not found, creating empty directory"
+    mkdir -p deps/3rd/cppjieba
+  fi
+  
   # 初始化cppjieba的子模块limonp
-  git submodule update --init --recursive deps/3rd/cppjieba || return
+  if [ -f "deps/3rd/cppjieba/.gitmodules" ]; then
+    echo "Initializing cppjieba submodules"
+    git -C deps/3rd/cppjieba submodule update --init --recursive || return
+  else
+    echo "cppjieba is not a git repository, skipping submodule initialization"
+  fi
 
   current_dir=$PWD
 
@@ -160,6 +171,20 @@ function do_build
 {
   TYPE=$1; shift
   prepare_build_dir $TYPE || return
+  
+  # 检查cppjieba目录是否存在
+  if [ ! -d "${TOPDIR}/deps/3rd/cppjieba" ]; then
+    echo "Error: cppjieba directory not found at ${TOPDIR}/deps/3rd/cppjieba"
+    echo "Please run './build.sh init' first to initialize dependencies"
+    return 1
+  fi
+  
+  # 检查cppjieba头文件是否存在
+  if [ ! -f "${TOPDIR}/deps/3rd/cppjieba/include/cppjieba/Jieba.hpp" ]; then
+    echo "Error: cppjieba header file not found at ${TOPDIR}/deps/3rd/cppjieba/include/cppjieba/Jieba.hpp"
+    return 1
+  fi
+  
   echo "${CMAKE_COMMAND_MINIOB} ${TOPDIR} $@"
   ${CMAKE_COMMAND_MINIOB} -S ${TOPDIR} $@
 }

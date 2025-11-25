@@ -5,6 +5,9 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 # 定义CMAKE_SOURCE_DIR，确保在编译时可用
 add_definitions(-DCMAKE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 
+# 为jieba_tokenizer.cpp添加特定的包含路径
+set_source_files_properties(storage/tokenizer/jieba_tokenizer.cpp PROPERTIES COMPILE_FLAGS "-I${PROJECT_SOURCE_DIR}/deps/3rd/cppjieba/include -I${PROJECT_SOURCE_DIR}/deps/3rd/cppjieba/deps/limonp/include")
+
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 

@@ -74,8 +74,8 @@ function prepare_build_dir
 
 function do_init
 {
-  # 初始化除了cppjieba之外的子模块
-  git submodule update --init --exclude=deps/3rd/cppjieba || return
+  # 初始化子模块，但不包括cppjieba（因为我们已经将其作为内部代码）
+  git submodule update --init deps/3rd/libevent deps/3rd/jsoncpp deps/3rd/googletest deps/3rd/benchmark deps/3rd/replxx || return
   git -C "deps/3rd/libevent" checkout 112421c8fa4840acd73502f2ab6a674fc025de37 || return
   # git submodule update --remote "deps/3rd/libevent" || return
   git -C "deps/3rd/jsoncpp" checkout 1.9.6 || return

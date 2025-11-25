@@ -60,6 +60,10 @@ function try_make
 {
   if [[ $MAKE != false ]]
   then
+    # use multi-thread compilation by default
+    if [[ ${#MAKE_ARGS[@]} -eq 0 ]]; then
+      MAKE_ARGS+=("-j$(nproc)")
+    fi
     # use single thread `make` if concurrent building failed
     $MAKE "${MAKE_ARGS[@]}" || $MAKE
   fi
@@ -121,14 +125,6 @@ function do_init
     mkdir -p build && \
     cd build && \
     ${CMAKE_COMMAND_THIRD_PARTY} .. -DCMAKE_BUILD_TYPE=Release -DREPLXX_BUILD_EXAMPLES=OFF -DREPLXX_BUILD_PACKAGE=OFF && \
-    ${MAKE_COMMAND} -j4 && \
-    ${MAKE_COMMAND} install
-
-  # build cppjieba
-  cd ${TOPDIR}/deps/3rd/cppjieba && \
-    mkdir -p build && \
-    cd build && \
-    ${CMAKE_COMMAND_THIRD_PARTY} .. && \
     ${MAKE_COMMAND} -j4 && \
     ${MAKE_COMMAND} install
 

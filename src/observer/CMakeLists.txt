@@ -32,9 +32,7 @@ SET(LIBEVENT_STATIC_LINK TRUE)
 FIND_PACKAGE(Libevent CONFIG REQUIRED)
 FIND_PACKAGE(jsoncpp CONFIG REQUIRED)
 
-# 添加cppjieba源文件
-file(GLOB_RECURSE CPPJIEBA_SOURCES "${PROJECT_SOURCE_DIR}/deps/3rd/cppjieba/src/*.cpp")
-SET(LIB_SRC ${LIB_SRC} ${CPPJIEBA_SOURCES})
+# cppjieba是header-only库，不需要添加源文件
 
 SET(LIBRARIES common pthread dl libevent::core libevent::pthreads)
 
